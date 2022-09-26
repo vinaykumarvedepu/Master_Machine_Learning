@@ -1,0 +1,81 @@
+﻿import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score
+df = pd.read_csv('C:/Users/vk822/Desktop/Pattern Recognition/Opioid/iq_iz.csv')
+X = df.drop(columns=['Class'])
+Y = df['Class']
+X_train,X_test,y_train,y_test = train_test_split(X,Y, test_size= 0.25)
+kfold = KFold(n_splits=20,random_state= 42)
+y_test_new = y_test.to_numpy()
+from statistics import mean
+qda = QuadraticDiscriminantAnalysis()
+cnt =0
+count=[]
+train_score =[]
+test_score = []
+cf = np.array([[0, 0], [0, 0]])
+
+
+for train_index,test_index in kfold.split(X):
+    X_train , X_test = X.iloc[train_index,:],X.iloc[test_index,:]
+    y_train , y_test = Y[train_index] , Y[test_index] 
+    qda.fit(X_train,y_train)
+    train_score_ = qda.score(X_train,y_train)
+    test_score_ =  qda.score(X_test,y_test)
+    cnt+=1
+    count.append(cnt)
+    train_score.append(train_score_)
+    test_score.append(test_score_)
+    y_pred = qda.predict(X_test)
+    for i in range(0,2):
+        if (y_test_new[i] == "R" and y_pred[i] == "R"):
+            cf[0][0] += 1
+        elif (y_test_new[i] == "R" and y_pred[i] == "NR"):
+            cf[1][0] += 1
+        elif (y_test_new[i] == "NR" and y_pred[i] == "R"):
+            cf[0][1] +=1
+        elif (y_test_new[i] == "NR" and y_pred[i] == "NR"):
+            cf[1][1] +=1
+        
+    print(cf)
+    print("for k = ", cnt)
+    print("train_score is :  ", train_score_, "and test score is :  ", test_score_)
+print("************************************************")
+print("************************************************")
+print("Average train score is :  ", mean(train_score))
+print("Average test score is :  ", mean(test_score))
+print("The Confusion matrix is:\n",cf)
+true_positive = cf[0][0]
+false_positive = cf[0][1]
+false_negative = cf[1][0]
+true_negative = cf[1][1]
+# Breaking down the formula for Accuracy
+Accuracy = (true_positive + true_negative) / (true_positive +false_positive + false_negative + true_negative)
+Precision = true_positive/(true_positive+false_positive)
+Recall = true_positive/(true_positive+false_negative)
+F1_Score = 2*(Recall * Precision) / (Recall + Precision)
+print("Accuracy=",Accuracy)
+print("precision=",Precision)
+print("Recall=",Recall)
+print("F1_score=",F1_Score)
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn import preprocessing
+scaler=StandardScaler()
+scaler.fit(X)
+scaled_data=scaler.transform(X)
+pca=PCA(n_components=2)
+pca.fit(scaled_data)
+x_pca=pca.transform(scaled_data)
+lb = preprocessing.LabelBinarizer()
+Y_lab=lb.fit_transform(Y)
+plt.figure(figsize=(8,6))
+plt.scatter(x_pca[:,0],x_pca[:,1],c=Y_lab)
+plt.xlabel('Time')
+plt.ylabel('Rate of change')
